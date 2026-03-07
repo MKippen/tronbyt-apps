@@ -1,0 +1,8 @@
+---
+id: bedtime
+name: Bedtime
+summary: 'Notification: bedtime'
+desc: Displays a bedtime notification with an animated bed icon.
+author: tronbyt
+recommendedInterval: 5
+supports2x: true
