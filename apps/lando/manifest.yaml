@@ -1,0 +1,8 @@
+---
+id: lando
+name: Lando Norris
+summary: 'Notification: Lando Norris!'
+desc: Displays a Lando Norris notification with McLaren Speedmark logo in papaya orange.
+author: tronbyt
+recommendedInterval: 5
+supports2x: true
