@@ -23,6 +23,18 @@ def ease(t):
         return 2.0 * t * t
     return -1.0 + (4.0 - 2.0 * t) * t
 
+def make_secondary_widget(num, unit, color):
+    """Secondary sensor: number in tom-thumb, unit slightly offset for visual separation."""
+    if unit:
+        return render.Row(
+            cross_align = "center",
+            children = [
+                render.Text(num, font = "tom-thumb", color = color),
+                render.Padding(pad = (1, 1, 0, 0), child = render.Text(unit, font = "tom-thumb", color = color)),
+            ],
+        )
+    return render.Text(num, font = "tom-thumb", color = color)
+
 STATION_EMOJIS = [
     # Plants & Garden
     ("🪴 Potted Plant", "1FAB4"),
@@ -172,17 +184,20 @@ def main(config):
     entity_id_2 = config.get("entity_id_2") or ""
     state2, unit2, _ = fetch_entity(entity_id_2, ha_url, ha_token)
     decimals2 = int(config.get("decimals_2") or "0")
-    value2 = format_value(state2, config.get("unit_2") or unit2 or "", decimals2)
+    unit_str2 = config.get("unit_2") or unit2 or ""
+    num2 = format_value(state2, "", decimals2)
     color2 = get_value_color(state2, config, "_2")
 
     # Tertiary entity — right slot of bottom bar (optional)
     entity_id_3 = config.get("entity_id_3") or ""
-    value3 = None
+    num3 = None
+    unit_str3 = ""
     color3 = "#888888"
     if entity_id_3:
         state3, unit3, _ = fetch_entity(entity_id_3, ha_url, ha_token)
         decimals3 = int(config.get("decimals_3") or "0")
-        value3 = format_value(state3, config.get("unit_3") or unit3 or "", decimals3)
+        unit_str3 = config.get("unit_3") or unit3 or ""
+        num3 = format_value(state3, "", decimals3)
         color3 = get_value_color(state3, config, "_3")
 
     station_icon = load_emoji(station_emoji)
@@ -242,7 +257,7 @@ def main(config):
     )
 
     # Bottom (7px): secondary entities
-    if value3:
+    if num3:
         bottom_child = render.Row(
             expanded = True,
             children = [
@@ -252,7 +267,7 @@ def main(config):
                         expanded = True,
                         main_align = "center",
                         cross_align = "center",
-                        children = [render.Text(value2, font = "tom-thumb", color = color2)],
+                        children = [make_secondary_widget(num2, unit_str2, color2)],
                     ),
                 ),
                 render.Box(width = 1, height = 7, color = "#1a1a1a"),
@@ -262,7 +277,7 @@ def main(config):
                         expanded = True,
                         main_align = "center",
                         cross_align = "center",
-                        children = [render.Text(value3, font = "tom-thumb", color = color3)],
+                        children = [make_secondary_widget(num3, unit_str3, color3)],
                     ),
                 ),
             ],
@@ -272,7 +287,7 @@ def main(config):
             expanded = True,
             main_align = "center",
             cross_align = "center",
-            children = [render.Text(value2, font = "tom-thumb", color = color2)],
+            children = [make_secondary_widget(num2, unit_str2, color2)],
         )
 
     bottom = render.Box(height = 7, child = bottom_child)
