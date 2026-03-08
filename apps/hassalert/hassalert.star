@@ -1,7 +1,7 @@
 """
 Applet: HASS Alert
 Summary: Conditional HA entity alert
-Description: Invisible in rotation until a Home Assistant entity meets a condition — then flashes a bold alert. Use for CO alarms, security, leaks, or any threshold event.
+Description: Invisible in rotation until a Home Assistant entity meets a condition — then shows an animated alert with icon splash and entity value. Use for CO alarms, security, leaks, or any threshold event.
 Author: tronbyt
 """
 
@@ -11,15 +11,21 @@ load("schema.star", "schema")
 
 OPENMOJI_BASE = "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/color/72x72/"
 
-FLASH_ON = 8    # bright frames
-FLASH_OFF = 8   # dark frames
-FRAME_DELAY = 120  # ms per frame — 120ms × 16 frames = ~2s blink cycle
+# Animation timing (matches hassstation style)
+SPLASH_FRAMES = 25   # icon holds for ~2s
+SLIDE_FRAMES = 12    # ease transition ~1s
+DATA_FRAMES = 165    # data holds ~13s — total ~16s, safely past 15s display window
+FRAME_DELAY = 80     # ms per frame
 
 ALERT_EMOJIS = [
     ("🚨 Siren", "1F6A8"),
     ("⚠️ Warning", "26A0-FE0F"),
     ("🔥 Fire", "1F525"),
-    ("💨 CO / Gas", "1F4A8"),
+    ("🫁 Lungs / CO2", "1FAC1"),
+    ("😷 Air Quality / Mask", "1F637"),
+    ("🌫️ Fog / Haze", "1F32B-FE0F"),
+    ("💀 Danger", "1F480"),
+    ("🤢 Toxic", "1F922"),
     ("💧 Water / Flood", "1F4A7"),
     ("🌡️ Temperature", "1F321-FE0F"),
     ("❄️ Freeze", "2744-FE0F"),
@@ -45,6 +51,17 @@ CONDITION_TYPES = [
     ("is 'on'", "is_on"),
     ("is 'off'", "is_off"),
 ]
+
+DECIMALS_OPTIONS = [
+    ("0 — whole number", "0"),
+    ("1 decimal place", "1"),
+    ("2 decimal places", "2"),
+]
+
+def ease(t):
+    if t < 0.5:
+        return 2.0 * t * t
+    return -1.0 + (4.0 - 2.0 * t) * t
 
 def is_numeric(s):
     if not s:
@@ -96,45 +113,19 @@ def load_emoji(code):
     rep = http.get(OPENMOJI_BASE + code + ".png", ttl_seconds = 86400)
     return rep.body() if rep.status_code == 200 else None
 
-def make_alert_frame(icon_img, title, value, bg_color, text_color):
-    icon_w = render.Image(src = icon_img, width = 12, height = 12) if icon_img else render.Box(width = 12, height = 12)
-    return render.Box(
-        width = 64,
-        height = 32,
-        color = bg_color,
-        child = render.Column(
-            expanded = True,
-            children = [
-                # Header: icon + scrolling title (14px)
-                render.Box(
-                    height = 14,
-                    child = render.Row(
-                        expanded = True,
-                        cross_align = "center",
-                        children = [
-                            render.Padding(pad = (2, 0, 2, 0), child = icon_w),
-                            render.Marquee(
-                                width = 48,
-                                child = render.Text(title, font = "tb-8", color = text_color),
-                            ),
-                        ],
-                    ),
-                ),
-                # Divider (1px)
-                render.Box(width = 64, height = 1, color = text_color),
-                # Value (17px)
-                render.Box(
-                    height = 17,
-                    child = render.Column(
-                        expanded = True,
-                        main_align = "center",
-                        cross_align = "center",
-                        children = [render.Text(value, font = "terminus-14", color = text_color)],
-                    ),
-                ),
-            ],
-        ),
-    )
+def format_value(state, decimals):
+    if not is_numeric(state):
+        return state
+    val = float(state)
+    if decimals == 0:
+        rounded = int(val + 0.5) if val >= 0.0 else int(val - 0.5)
+        return str(rounded)
+    if decimals == 1:
+        r = int(val * 10.0 + 0.5) if val >= 0.0 else int(val * 10.0 - 0.5)
+        return str(r // 10) + "." + str(r % 10)
+    r = int(val * 100.0 + 0.5) if val >= 0.0 else int(val * 100.0 - 0.5)
+    dec = str(r % 100)
+    return str(r // 100) + "." + (dec if len(dec) == 2 else "0" + dec)
 
 def main(config):
     ha_url = config.get("ha_url") or ""
@@ -151,20 +142,88 @@ def main(config):
 
     # Condition met — build alert
     alert_title = config.get("alert_title") or friendly_name or entity_id
-    alert_color = config.get("alert_color") or "#FF2222"
+    alert_color = config.get("alert_color") or "#CC0000"
+    bg_color = config.get("bg_color") or "#111111"
     emoji_code = config.get("alert_emoji") or "1F6A8"
-    display_value = state + (unit if unit else "")
+    unit_str = config.get("unit") or unit or ""
+    decimals = int(config.get("decimals") or "0")
+    display_num = format_value(state, decimals)
 
     icon_img = load_emoji(emoji_code)
 
-    bright = make_alert_frame(icon_img, alert_title, display_value, alert_color, "#FFFFFF")
-    dark = make_alert_frame(icon_img, alert_title, display_value, "#000000", alert_color)
+    # ── SPLASH: big icon on dark background so any icon color pops ────────
+    big_icon = render.Image(src = icon_img, width = 28, height = 28) if icon_img else render.Box(width = 28, height = 28, color = "#444444")
+    splash = render.Box(
+        width = 64,
+        height = 32,
+        color = bg_color,
+        child = render.Column(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = [big_icon],
+        ),
+    )
 
+    # ── DATA VIEW: header band + value ────────────────────────────────────
+    header = render.Column(children = [
+        render.Box(
+            height = 9,
+            color = alert_color,
+            child = render.Column(
+                expanded = True,
+                main_align = "center",
+                cross_align = "center",
+                children = [
+                    render.Marquee(
+                        width = 62,
+                        align = "center",
+                        child = render.Text(alert_title, font = "tom-thumb", color = "#FFFFFF"),
+                    ),
+                ],
+            ),
+        ),
+        render.Box(width = 64, height = 1, color = "#FFFFFF"),
+    ])
+
+    # Value: number large, unit small (same pattern as hassstation primary)
+    if unit_str:
+        value_widget = render.Row(
+            cross_align = "end",
+            children = [
+                render.Text(display_num, font = "terminus-14", color = "#FFFFFF"),
+                render.Padding(pad = (1, 0, 0, 1), child = render.Text(unit_str, font = "tb-8", color = "#FFFFFF")),
+            ],
+        )
+    else:
+        value_widget = render.Text(display_num, font = "terminus-14", color = "#FFFFFF")
+
+    value_area = render.Box(
+        height = 22,
+        color = bg_color,
+        child = render.Column(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = [value_widget],
+        ),
+    )
+
+    data = render.Column(children = [header, value_area])
+
+    # ── ANIMATION ─────────────────────────────────────────────────────────
     frames = []
-    for _ in range(FLASH_ON):
-        frames.append(bright)
-    for _ in range(FLASH_OFF):
-        frames.append(dark)
+    for _ in range(SPLASH_FRAMES):
+        frames.append(splash)
+    for i in range(SLIDE_FRAMES):
+        t = ease((i + 1.0) / SLIDE_FRAMES)
+        pad = int(64.0 * (1.0 - t))
+        frames.append(render.Stack(children = [
+            splash,
+            render.Padding(pad = (pad, 0, 0, 0), child = data),
+        ]))
+    for _ in range(DATA_FRAMES):
+        frames.append(data)
 
     return render.Root(
         delay = FRAME_DELAY,
@@ -179,6 +238,10 @@ def get_schema():
     condition_options = [
         schema.Option(display = label, value = value)
         for label, value in CONDITION_TYPES
+    ]
+    decimals_options = [
+        schema.Option(display = label, value = value)
+        for label, value in DECIMALS_OPTIONS
     ]
 
     return schema.Schema(
@@ -200,7 +263,7 @@ def get_schema():
             schema.Text(
                 id = "entity_id",
                 name = "Entity to Watch",
-                desc = "Entity ID to monitor (e.g. sensor.co_level, binary_sensor.smoke, alarm_control_panel.home)",
+                desc = "Entity ID to monitor (e.g. sensor.co2_kitchen, binary_sensor.smoke)",
                 icon = "eye",
             ),
             schema.Dropdown(
@@ -214,21 +277,36 @@ def get_schema():
             schema.Text(
                 id = "condition_value",
                 name = "Condition Value",
-                desc = "Threshold or comparison value (e.g. 50, pending, on). Not needed for 'is on/off'.",
+                desc = "Threshold or comparison value (e.g. 500, pending). Not needed for 'is on/off'.",
                 icon = "hashtag",
                 default = "",
             ),
             schema.Text(
                 id = "alert_title",
                 name = "Alert Title",
-                desc = "Text shown in the alert header (e.g. CO ALERT, Front Door Open). Defaults to entity friendly name.",
+                desc = "Text shown in the header (e.g. Kitchen CO2, Front Door). Defaults to entity friendly name.",
                 icon = "tag",
                 default = "",
+            ),
+            schema.Text(
+                id = "unit",
+                name = "Unit Override",
+                desc = "Optional unit suffix (e.g. ppm, °F). Defaults to HA unit_of_measurement.",
+                icon = "hashtag",
+                default = "",
+            ),
+            schema.Dropdown(
+                id = "decimals",
+                name = "Decimal Places",
+                desc = "How many decimal places to show for numeric values",
+                icon = "hashtag",
+                default = "0",
+                options = decimals_options,
             ),
             schema.Dropdown(
                 id = "alert_emoji",
                 name = "Alert Icon",
-                desc = "Icon shown in the alert",
+                desc = "Icon shown during splash and in the header",
                 icon = "faceGrin",
                 default = "1F6A8",
                 options = emoji_options,
@@ -236,10 +314,18 @@ def get_schema():
             schema.Color(
                 id = "alert_color",
                 name = "Alert Color",
-                desc = "Color used when the alert is active",
+                desc = "Color of the header band — use your alert color here (red, orange, etc.)",
                 icon = "palette",
-                default = "#FF2222",
-                palette = ["#FF2222", "#FF8800", "#FFDD00", "#FF00FF", "#00AAFF"],
+                default = "#CC0000",
+                palette = ["#CC0000", "#FF2222", "#FF8800", "#FFDD00", "#FF00FF", "#00AAFF"],
+            ),
+            schema.Color(
+                id = "bg_color",
+                name = "Background Color",
+                desc = "Background behind the icon and value — keep dark so the icon is visible",
+                icon = "palette",
+                default = "#111111",
+                palette = ["#111111", "#000000", "#0d0000", "#0a0a00", "#00000d", "#0a000a"],
             ),
         ],
     )
