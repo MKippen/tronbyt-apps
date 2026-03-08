@@ -1,0 +1,9 @@
+---
+id: datetimeplus
+name: DateTime+
+summary: Date, time, and day of week
+desc: Clean clock — date header with AM/PM, large hero time, full day of week at the bottom.
+author: tronbyt
+fileName: datetimeplus.star
+packageName: datetimeplus
+recommendedInterval: 1
