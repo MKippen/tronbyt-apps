@@ -100,26 +100,6 @@ def load_emoji(code):
     rep = http.get(OPENMOJI_BASE + code + ".png", ttl_seconds = 86400)
     return rep.body() if rep.status_code == 200 else None
 
-def render_stat_col(value, label, color, width):
-    return render.Box(
-        width = width,
-        child = render.Column(
-            expanded = True,
-            main_align = "center",
-            cross_align = "center",
-            children = [
-                render.Text(value, font = "tb-8", color = color),
-                render.Padding(
-                    pad = (0, 2, 0, 0),
-                    child = render.Marquee(
-                        width = width - 2,
-                        child = render.Text(label, font = "tom-thumb", color = "#557755"),
-                    ),
-                ),
-            ],
-        ),
-    )
-
 def main(config):
     ha_url = config.get("ha_url") or ""
     ha_token = config.get("ha_token") or ""
@@ -130,25 +110,19 @@ def main(config):
     accent_color = config.get("accent_color") or "#2a7a2a"
 
     entity_id_1 = config.get("entity_id_1") or ""
-    state1, unit1, friendly1 = fetch_entity(entity_id_1, ha_url, ha_token)
-    label1 = config.get("label_1") or friendly1 or entity_id_1
+    state1, unit1, _ = fetch_entity(entity_id_1, ha_url, ha_token)
     value1 = format_value(state1, config.get("unit_1") or unit1 or "")
     color1 = get_value_color(state1, config, "_1")
 
     entity_id_2 = config.get("entity_id_2") or ""
-    state2, unit2, friendly2 = fetch_entity(entity_id_2, ha_url, ha_token)
-    label2 = config.get("label_2") or friendly2 or entity_id_2
+    state2, unit2, _ = fetch_entity(entity_id_2, ha_url, ha_token)
     value2 = format_value(state2, config.get("unit_2") or unit2 or "")
     color2 = get_value_color(state2, config, "_2")
 
     station_icon = load_emoji(station_emoji)
 
-    # Header band: icon + station name
-    if station_icon:
-        icon_widget = render.Image(src = station_icon, width = 8, height = 8)
-    else:
-        icon_widget = render.Box(width = 8, height = 8)
-
+    # Header band: icon + station name (10px, keep as-is)
+    icon_widget = render.Image(src = station_icon, width = 8, height = 8) if station_icon else render.Box(width = 8, height = 8)
     header = render.Box(
         height = 10,
         color = header_color,
@@ -164,22 +138,36 @@ def main(config):
     # 1px accent line
     accent = render.Box(width = 64, height = 1, color = accent_color)
 
-    # Side-by-side stat columns (21px tall, 31+1+32 = 64px wide)
-    stats = render.Box(
-        height = 21,
+    # Primary value: large (terminus-14), left-aligned, 14px zone
+    # Units carry the meaning — no label needed (°F = temp, % = humidity)
+    primary = render.Box(
+        height = 14,
         child = render.Row(
             expanded = True,
+            cross_align = "center",
             children = [
-                render_stat_col(value1, label1, color1, 31),
-                render.Box(width = 1, height = 21, color = "#1e1e1e"),
-                render_stat_col(value2, label2, color2, 32),
+                render.Padding(pad = (3, 0, 0, 0), child = render.Text(value1, font = "terminus-14", color = color1)),
             ],
         ),
     )
 
+    # Secondary value: small (tom-thumb), right-aligned, 7px zone
+    secondary = render.Box(
+        height = 7,
+        child = render.Row(
+            expanded = True,
+            main_align = "end",
+            cross_align = "center",
+            children = [
+                render.Padding(pad = (0, 0, 3, 0), child = render.Text(value2, font = "tom-thumb", color = color2)),
+            ],
+        ),
+    )
+
+    # Layout: header(10) + accent(1) + primary(14) + secondary(7) = 32px
     return render.Root(
         child = render.Column(
-            children = [header, accent, stats],
+            children = [header, accent, primary, secondary],
         ),
     )
 
@@ -240,15 +228,8 @@ def get_schema():
             schema.Text(
                 id = "entity_id_1",
                 name = "Sensor 1 Entity ID",
-                desc = "Left column sensor (e.g. sensor.greenhouse_temperature)",
+                desc = "Primary (large) sensor, shown left (e.g. sensor.greenhouse_temperature)",
                 icon = "temperatureHalf",
-            ),
-            schema.Text(
-                id = "label_1",
-                name = "Sensor 1 Label",
-                desc = "Short label for sensor 1 (defaults to entity friendly_name)",
-                icon = "tag",
-                default = "",
             ),
             schema.Text(
                 id = "unit_1",
@@ -299,15 +280,8 @@ def get_schema():
             schema.Text(
                 id = "entity_id_2",
                 name = "Sensor 2 Entity ID",
-                desc = "Right column sensor (e.g. sensor.greenhouse_humidity)",
+                desc = "Secondary (small) sensor, shown right (e.g. sensor.greenhouse_humidity)",
                 icon = "temperatureHalf",
-            ),
-            schema.Text(
-                id = "label_2",
-                name = "Sensor 2 Label",
-                desc = "Short label for sensor 2 (defaults to entity friendly_name)",
-                icon = "tag",
-                default = "",
             ),
             schema.Text(
                 id = "unit_2",
