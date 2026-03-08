@@ -1,0 +1,9 @@
+---
+id: f1next
+name: F1 Next Race
+summary: Next Formula 1 grand prix
+desc: Shows the next F1 race location, date, and local start time with a racing car splash animation.
+author: tronbyt
+fileName: f1next.star
+packageName: f1next
+recommendedInterval: 30
