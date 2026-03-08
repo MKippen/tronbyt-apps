@@ -117,8 +117,9 @@ def main(config):
 
     # ── HEADER: ticker left, % change right, accent divider ───────────────
     header = render.Column(children = [
+        render.Box(height = 1, color = header_bg),
         render.Box(
-            height = 7, color = header_bg,
+            height = 6, color = header_bg,
             child = render.Row(
                 expanded = True,
                 main_align = "space_between",
