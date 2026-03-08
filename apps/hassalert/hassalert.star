@@ -14,7 +14,7 @@ OPENMOJI_BASE = "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/color/72
 # Animation timing (matches hassstation style)
 SPLASH_FRAMES = 25   # icon holds for ~2s
 SLIDE_FRAMES = 12    # ease transition ~1s
-DATA_FRAMES = 165    # data holds ~13s — total ~16s, safely past 15s display window
+DATA_FRAMES = 1500   # data holds ~120s — animation never loops for any sane display time
 FRAME_DELAY = 80     # ms per frame
 
 ALERT_EMOJIS = [
