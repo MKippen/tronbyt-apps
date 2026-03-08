@@ -109,66 +109,97 @@ def main(config):
     header_color = config.get("header_color") or "#0a1a0a"
     accent_color = config.get("accent_color") or "#2a7a2a"
 
+    # Primary entity (middle row — hero metric)
     entity_id_1 = config.get("entity_id_1") or ""
     state1, unit1, _ = fetch_entity(entity_id_1, ha_url, ha_token)
     value1 = format_value(state1, config.get("unit_1") or unit1 or "")
     color1 = get_value_color(state1, config, "_1")
 
+    # Secondary entity — left slot of bottom bar
     entity_id_2 = config.get("entity_id_2") or ""
     state2, unit2, _ = fetch_entity(entity_id_2, ha_url, ha_token)
     value2 = format_value(state2, config.get("unit_2") or unit2 or "")
     color2 = get_value_color(state2, config, "_2")
 
+    # Tertiary entity — right slot of bottom bar (optional)
+    entity_id_3 = config.get("entity_id_3") or ""
+    value3 = None
+    color3 = "#888888"
+    if entity_id_3:
+        state3, unit3, _ = fetch_entity(entity_id_3, ha_url, ha_token)
+        value3 = format_value(state3, config.get("unit_3") or unit3 or "")
+        color3 = get_value_color(state3, config, "_3")
+
     station_icon = load_emoji(station_emoji)
 
-    # Header band: icon + station name (10px, keep as-is)
-    icon_widget = render.Image(src = station_icon, width = 8, height = 8) if station_icon else render.Box(width = 8, height = 8)
-    header = render.Box(
-        height = 10,
-        color = header_color,
-        child = render.Row(
-            cross_align = "center",
-            children = [
-                render.Padding(pad = (1, 0, 1, 0), child = icon_widget),
-                render.Text(station_name, font = "tom-thumb", color = "#88cc88"),
-            ],
+    # ── TOP QUARTER (8px): header band + accent line ──────────────────────
+    icon_widget = render.Image(src = station_icon, width = 7, height = 7) if station_icon else render.Box(width = 7, height = 7)
+    top = render.Column(children = [
+        render.Box(
+            height = 7,
+            color = header_color,
+            child = render.Row(
+                cross_align = "center",
+                children = [
+                    render.Padding(pad = (1, 0, 1, 0), child = icon_widget),
+                    render.Text(station_name, font = "tom-thumb", color = "#88cc88"),
+                ],
+            ),
         ),
-    )
+        render.Box(width = 64, height = 1, color = accent_color),
+    ])
 
-    # 1px accent line
-    accent = render.Box(width = 64, height = 1, color = accent_color)
-
-    # Primary value: large (terminus-14), left-aligned, 14px zone
-    # Units carry the meaning — no label needed (°F = temp, % = humidity)
-    primary = render.Box(
-        height = 14,
-        child = render.Row(
-            expanded = True,
-            cross_align = "center",
-            children = [
-                render.Padding(pad = (3, 0, 0, 0), child = render.Text(value1, font = "terminus-14", color = color1)),
-            ],
-        ),
-    )
-
-    # Secondary value: small (tom-thumb), right-aligned, 7px zone
-    secondary = render.Box(
-        height = 7,
-        child = render.Row(
-            expanded = True,
-            main_align = "end",
-            cross_align = "center",
-            children = [
-                render.Padding(pad = (0, 0, 3, 0), child = render.Text(value2, font = "tom-thumb", color = color2)),
-            ],
-        ),
-    )
-
-    # Layout: header(10) + accent(1) + primary(14) + secondary(7) = 32px
-    return render.Root(
+    # ── MIDDLE HALF (16px): primary entity, centered ──────────────────────
+    middle = render.Box(
+        height = 16,
         child = render.Column(
-            children = [header, accent, primary, secondary],
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = [render.Text(value1, font = "tb-8", color = color1)],
         ),
+    )
+
+    # ── BOTTOM QUARTER (8px): secondary entities ──────────────────────────
+    # One or two entities fill the bottom strip with equal-width slots
+    if value3:
+        bottom_child = render.Row(
+            expanded = True,
+            children = [
+                render.Box(
+                    width = 31,
+                    child = render.Column(
+                        expanded = True,
+                        main_align = "center",
+                        cross_align = "center",
+                        children = [render.Text(value2, font = "tom-thumb", color = color2)],
+                    ),
+                ),
+                render.Box(width = 1, height = 8, color = "#1a1a1a"),
+                render.Box(
+                    width = 32,
+                    child = render.Column(
+                        expanded = True,
+                        main_align = "center",
+                        cross_align = "center",
+                        children = [render.Text(value3, font = "tom-thumb", color = color3)],
+                    ),
+                ),
+            ],
+        )
+    else:
+        bottom_child = render.Column(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = [render.Text(value2, font = "tom-thumb", color = color2)],
+        )
+
+    bottom = render.Box(height = 8, child = bottom_child)
+
+    # top(8) + middle(16) + bottom(8) = 32px
+    return render.Root(
+        child = render.Column(children = [top, middle, bottom]),
     )
 
 def get_schema():
@@ -324,6 +355,59 @@ def get_schema():
                 id = "below_color_2",
                 name = "Sensor 2 Low Color",
                 desc = "Color when sensor 2 is below the low threshold",
+                icon = "palette",
+                default = "#4488FF",
+                palette = ["#4488FF", "#00AAFF", "#0044FF"],
+            ),
+            # Sensor 3 (optional — fills right slot of bottom bar)
+            schema.Text(
+                id = "entity_id_3",
+                name = "Sensor 3 Entity ID (optional)",
+                desc = "Right slot of bottom bar. Leave blank to show sensor 2 full-width.",
+                icon = "temperatureHalf",
+                default = "",
+            ),
+            schema.Text(
+                id = "unit_3",
+                name = "Sensor 3 Unit Override",
+                desc = "Override the displayed unit (leave blank to use HA value)",
+                icon = "ruler",
+                default = "",
+            ),
+            schema.Color(
+                id = "normal_color_3",
+                name = "Sensor 3 Normal Color",
+                desc = "Value text color when in normal range",
+                icon = "palette",
+                default = "#FFDD88",
+                palette = ["#FFDD88", "#FFFFFF", "#AAFFAA", "#AADDFF"],
+            ),
+            schema.Text(
+                id = "above_value_3",
+                name = "Sensor 3 High Threshold",
+                desc = "Value above which the High Color is shown",
+                icon = "arrowUp",
+                default = "",
+            ),
+            schema.Color(
+                id = "above_color_3",
+                name = "Sensor 3 High Color",
+                desc = "Color when sensor 3 exceeds the high threshold",
+                icon = "palette",
+                default = "#FF4444",
+                palette = ["#FF4444", "#FF8800", "#FF0000"],
+            ),
+            schema.Text(
+                id = "below_value_3",
+                name = "Sensor 3 Low Threshold",
+                desc = "Value below which the Low Color is shown",
+                icon = "arrowDown",
+                default = "",
+            ),
+            schema.Color(
+                id = "below_color_3",
+                name = "Sensor 3 Low Color",
+                desc = "Color when sensor 3 is below the low threshold",
                 icon = "palette",
                 default = "#4488FF",
                 palette = ["#4488FF", "#00AAFF", "#0044FF"],
