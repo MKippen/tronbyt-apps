@@ -11,7 +11,7 @@ load("render.star", "render")
 load("schema.star", "schema")
 load("time.star", "time")
 
-F1_NEXT_URL   = "https://raw.githubusercontent.com/jvivona/tidbyt-data/refs/heads/main/formula1/next.json"
+F1_NEXT_URL   = "https://api.jolpi.ca/ergast/f1/current/next/"
 F1_TRACKS_URL = "https://raw.githubusercontent.com/jvivona/tidbyt-data/refs/heads/main/formula1/metadata/tracks.json"
 
 ACCENT    = "#CC0000"
