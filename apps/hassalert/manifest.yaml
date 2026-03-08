@@ -1,0 +1,9 @@
+---
+id: hassalert
+name: HASS Alert
+summary: Conditional HA entity alert
+desc: Invisible in rotation until a Home Assistant entity meets a condition — then flashes a bold alert. Use for CO alarms, security, leaks, or any threshold event.
+author: tronbyt
+fileName: hassalert.star
+packageName: hassalert
+recommendedInterval: 1

@@ -56,6 +56,30 @@ STATION_EMOJIS = [
     ("🐱 Cat Area", "1F431"),
 ]
 
+CONDITION_TYPES = [
+    ("above threshold", "above"),
+    ("below threshold", "below"),
+    ("equals value", "equals"),
+    ("not equals value", "not_equals"),
+    ("is 'on'", "is_on"),
+    ("is 'off'", "is_off"),
+]
+
+def check_condition(state, cond_type, cond_value):
+    if cond_type == "is_on":
+        return state == "on"
+    if cond_type == "is_off":
+        return state == "off"
+    if cond_type == "equals":
+        return state == cond_value
+    if cond_type == "not_equals":
+        return state != cond_value
+    if cond_type in ("above", "below") and is_numeric(state) and is_numeric(cond_value):
+        val = float(state)
+        threshold = float(cond_value)
+        return val > threshold if cond_type == "above" else val < threshold
+    return False
+
 def is_numeric(s):
     if not s:
         return False
@@ -124,6 +148,13 @@ def main(config):
     ha_url = config.get("ha_url") or ""
     ha_token = config.get("ha_token") or ""
 
+    # Visibility condition — return None (skip in rotation) if not met
+    cond_entity = config.get("cond_entity") or ""
+    if cond_entity:
+        cond_state, _, _ = fetch_entity(cond_entity, ha_url, ha_token)
+        if not check_condition(cond_state, config.get("cond_type") or "above", config.get("cond_value") or ""):
+            return None
+
     station_name = config.get("station_name") or "Station"
     station_emoji = config.get("station_emoji") or "1FAB4"
     header_color = config.get("header_color") or "#0a1a0a"
@@ -133,7 +164,8 @@ def main(config):
     entity_id_1 = config.get("entity_id_1") or ""
     state1, unit1, _ = fetch_entity(entity_id_1, ha_url, ha_token)
     decimals1 = int(config.get("decimals_1") or "0")
-    value1 = format_value(state1, config.get("unit_1") or unit1 or "", decimals1)
+    unit_str1 = config.get("unit_1") or unit1 or ""
+    num1 = format_value(state1, "", decimals1)
     color1 = get_value_color(state1, config, "_1")
 
     # Secondary entity — left slot of bottom bar
@@ -187,14 +219,25 @@ def main(config):
         render.Box(width = 64, height = 1, color = accent_color),
     ])
 
-    # Primary (15px): hero metric centered
+    # Primary (15px): hero metric centered — number big, unit small
+    if unit_str1:
+        hero = render.Row(
+            cross_align = "end",
+            children = [
+                render.Text(num1, font = "terminus-14", color = color1),
+                render.Padding(pad = (1, 0, 0, 1), child = render.Text(unit_str1, font = "tb-8", color = color1)),
+            ],
+        )
+    else:
+        hero = render.Text(num1, font = "terminus-14", color = color1)
+
     middle = render.Box(
         height = 15,
         child = render.Column(
             expanded = True,
             main_align = "center",
             cross_align = "center",
-            children = [render.Text(value1, font = "terminus-14", color = color1)],
+            children = [hero],
         ),
     )
 
@@ -505,6 +548,32 @@ def get_schema():
                 icon = "palette",
                 default = "#4488FF",
                 palette = ["#4488FF", "#00AAFF", "#0044FF"],
+            ),
+            # Visibility condition (optional — leave blank to always show)
+            schema.Text(
+                id = "cond_entity",
+                name = "Show Only When Entity (optional)",
+                desc = "Leave blank to always show. Set an entity ID to make this station conditional.",
+                icon = "eye",
+                default = "",
+            ),
+            schema.Dropdown(
+                id = "cond_type",
+                name = "Visibility Condition",
+                desc = "Condition the entity must meet for this station to appear in rotation",
+                icon = "boltLightning",
+                default = "above",
+                options = [
+                    schema.Option(display = label, value = value)
+                    for label, value in CONDITION_TYPES
+                ],
+            ),
+            schema.Text(
+                id = "cond_value",
+                name = "Condition Value",
+                desc = "Threshold or value to compare against (e.g. 50, on, pending)",
+                icon = "hashtag",
+                default = "",
             ),
         ],
     )
