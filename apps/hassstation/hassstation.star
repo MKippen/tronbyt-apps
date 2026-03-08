@@ -14,7 +14,7 @@ OPENMOJI_BASE = "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/color/72
 # Animation timing
 SPLASH_FRAMES = 25  # icon holds for ~2s
 SLIDE_FRAMES = 12   # slide transition ~1s
-DATA_FRAMES = 100   # data holds for ~8s
+DATA_FRAMES = 165   # data holds for ~13s — total ~16s, safely past 15s display window
 FRAME_DELAY = 80    # ms per frame
 
 def ease(t):
