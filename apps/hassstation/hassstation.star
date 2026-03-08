@@ -132,11 +132,12 @@ def main(config):
 
     station_icon = load_emoji(station_emoji)
 
-    # ── TOP QUARTER (8px): header band + accent line ──────────────────────
-    icon_widget = render.Image(src = station_icon, width = 7, height = 7) if station_icon else render.Box(width = 7, height = 7)
+    # ── HEADER (10px): 9px band + 1px accent line ────────────────────────
+    # Icon is 8×8 in a 9px row — cross_align centers it with ~0.5px breathing
+    icon_widget = render.Image(src = station_icon, width = 8, height = 8) if station_icon else render.Box(width = 8, height = 8)
     top = render.Column(children = [
         render.Box(
-            height = 7,
+            height = 9,
             color = header_color,
             child = render.Row(
                 cross_align = "center",
@@ -149,14 +150,15 @@ def main(config):
         render.Box(width = 64, height = 1, color = accent_color),
     ])
 
-    # ── MIDDLE HALF (16px): primary entity, centered ──────────────────────
+    # ── PRIMARY (15px): temperature in terminus-14, centered ──────────────
+    # terminus-14 is 14px tall → 0.5px breathing each side in 15px zone
     middle = render.Box(
-        height = 16,
+        height = 15,
         child = render.Column(
             expanded = True,
             main_align = "center",
             cross_align = "center",
-            children = [render.Text(value1, font = "tb-8", color = color1)],
+            children = [render.Text(value1, font = "terminus-14", color = color1)],
         ),
     )
 
@@ -175,7 +177,7 @@ def main(config):
                         children = [render.Text(value2, font = "tom-thumb", color = color2)],
                     ),
                 ),
-                render.Box(width = 1, height = 8, color = "#1a1a1a"),
+                render.Box(width = 1, height = 7, color = "#1a1a1a"),
                 render.Box(
                     width = 32,
                     child = render.Column(
@@ -195,9 +197,9 @@ def main(config):
             children = [render.Text(value2, font = "tom-thumb", color = color2)],
         )
 
-    bottom = render.Box(height = 8, child = bottom_child)
+    bottom = render.Box(height = 7, child = bottom_child)
 
-    # top(8) + middle(16) + bottom(8) = 32px
+    # top(10) + middle(15) + bottom(7) = 32px
     return render.Root(
         child = render.Column(children = [top, middle, bottom]),
     )
