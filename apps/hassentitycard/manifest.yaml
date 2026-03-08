@@ -1,0 +1,10 @@
+---
+id: hassentitycard
+name: HASS Entity Card
+summary: HA entity with emoji icon
+desc: Displays a single Home Assistant entity value with a customizable emoji icon and threshold-based colors.
+author: tronbyt
+fileName: hassentitycard.star
+packageName: hassentitycard
+recommendedInterval: 30
+supports2x: true
