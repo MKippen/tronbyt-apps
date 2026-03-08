@@ -119,7 +119,9 @@ def main(config):
     content = render.Row(children = [left_widget, right_widget])
     data    = render.Column(children = [header, content])
 
-    # ── ANIMATION: F1 logo splash → ease → data hold ──────────────────────
+    # ── ANIMATION: F1 logo splash → ease over black → data hold ──────────────
+    # The slide uses a plain black bg so the data doesn't overlap the logo
+    black_bg = render.Box(width = 64, height = 32, color = "#000000")
     frames = []
     for _ in range(SPLASH_FRAMES):
         frames.append(splash)
@@ -127,7 +129,7 @@ def main(config):
         t   = ease((i + 1.0) / SLIDE_FRAMES)
         pad = int(64.0 * (1.0 - t))
         frames.append(render.Stack(children = [
-            splash,
+            black_bg,
             render.Padding(pad = (pad, 0, 0, 0), child = data),
         ]))
     for _ in range(DATA_FRAMES):
