@@ -1,7 +1,7 @@
 """
 Applet: DateTime+
 Summary: Date, time, and day of week
-Description: Clean clock display — date in the header with AM/PM, large hero time in the middle, full day of week at the bottom.
+Description: Clean clock display — day and date in the header, large hero time in the middle, AM/PM at the bottom.
 Author: tronbyt
 """
 
@@ -16,14 +16,14 @@ def main(config):
 
     now = time.now().in_location(tz)
 
-    date_str = now.format("Jan 2")            # "Mar 8"
-    day_str  = now.format("Monday").upper()   # "SATURDAY"
-    ampm_str = now.format("PM")               # "AM" / "PM"
+    day_str  = now.format("Monday").upper()        # "SUNDAY"
+    date_str = now.format("January 2").upper()     # "MARCH 8"
+    ampm_str = now.format("PM")                    # "AM" / "PM"
     time_str = now.format("15:04") if use24 else now.format("3:04")
 
     header_bg = "#0D0D0D"
 
-    # ── HEADER: date left, AM/PM right ────────────────────────────────────
+    # ── HEADER: day left (accent), date right (dim) ────────────────────────
     header = render.Column(children = [
         render.Box(height = 1, color = header_bg),
         render.Box(
@@ -33,8 +33,8 @@ def main(config):
                 main_align = "space_between",
                 cross_align = "center",
                 children = [
-                    render.Padding(pad = (2, 0, 0, 0), child = render.Text(date_str, font = "tom-thumb", color = "#CCCCCC")),
-                    render.Padding(pad = (0, 0, 2, 0), child = render.Text("" if use24 else ampm_str, font = "tom-thumb", color = accent)),
+                    render.Padding(pad = (2, 0, 0, 0), child = render.Text(day_str, font = "tom-thumb", color = accent)),
+                    render.Padding(pad = (0, 0, 2, 0), child = render.Text(date_str, font = "tom-thumb", color = "#CCCCCC")),
                 ],
             ),
         ),
@@ -50,16 +50,16 @@ def main(config):
         ),
     )
 
-    # ── DAY: full day name in accent, centered ─────────────────────────────
-    day_area = render.Box(
+    # ── AM/PM: below the time, centered ───────────────────────────────────
+    ampm_area = render.Box(
         height = 8,
         child = render.Column(
             expanded = True, main_align = "center", cross_align = "center",
-            children = [render.Text(day_str, font = "tom-thumb", color = accent)],
+            children = [render.Text("" if use24 else ampm_str, font = "tom-thumb", color = accent)],
         ),
     )
 
-    return render.Root(child = render.Column(children = [header, time_area, day_area]))
+    return render.Root(child = render.Column(children = [header, time_area, ampm_area]))
 
 def get_schema():
     return schema.Schema(
