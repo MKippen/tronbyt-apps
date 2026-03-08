@@ -1,0 +1,10 @@
+---
+id: hassstation
+name: HASS Sensor Station
+summary: HA station with two sensors
+desc: Displays a named Home Assistant sensor station with two entities side by side. Perfect for greenhouse temp/humidity, energy pair, or any two sensors in a room.
+author: tronbyt
+fileName: hassstation.star
+packageName: hassstation
+recommendedInterval: 30
+supports2x: false
