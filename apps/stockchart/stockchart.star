@@ -41,7 +41,17 @@ def format_pct(current, prev):
     dec = int(abs_pct * 10.0 + 0.5) % 10
     return sign + str(whole) + "." + str(dec) + "%"
 
+def hex_dim(color, factor):
+    """Return a darkened version of a hex color (factor 0.0–1.0)."""
+    h = color.lstrip("#").upper()
+    d = "0123456789ABCDEF"
+    r = int(int(h[0:2], 16) * factor)
+    g = int(int(h[2:4], 16) * factor)
+    b = int(int(h[4:6], 16) * factor)
+    return "#" + d[r >> 4] + d[r & 15] + d[g >> 4] + d[g & 15] + d[b >> 4] + d[b & 15]
+
 def make_sparkline(prices, width, height, color):
+    """Bar chart with a dim full-height track behind each bar."""
     clean = [p for p in prices if p != None]
     if len(clean) < 2:
         return render.Box(width = width, height = height)
@@ -54,18 +64,26 @@ def make_sparkline(prices, width, height, color):
     if bar_w < 1:
         bar_w = 1
     pts = clean[-(width // bar_w):]
+    track = hex_dim(color, 0.22)
     cols = []
     for p in pts:
-        h = int((p - min_p) / rng * float(height - 1) + 0.5) + 1
-        if h < 1:
-            h = 1
-        if h > height:
-            h = height
-        cols.append(render.Box(width = bar_w, height = h, color = color))
+        bar_h = int((p - min_p) / rng * float(height - 1) + 0.5) + 1
+        if bar_h < 1:
+            bar_h = 1
+        if bar_h > height:
+            bar_h = height
+        col = render.Stack(children = [
+            render.Box(width = bar_w, height = height, color = track),
+            render.Padding(
+                pad = (0, height - bar_h, 0, 0),
+                child = render.Box(width = bar_w, height = bar_h, color = color),
+            ),
+        ])
+        cols.append(col)
     return render.Box(
         width = width,
         height = height,
-        child = render.Row(cross_align = "end", children = cols),
+        child = render.Row(children = cols),
     )
 
 def main(config):
@@ -97,7 +115,7 @@ def main(config):
     price_str = format_price(current)
     pct_str   = format_pct(current, prev)
 
-    # ── HEADER (8px + 1px accent): ticker left, % change right ────────────
+    # ── HEADER: ticker left, % change right, accent divider ───────────────
     header = render.Column(children = [
         render.Box(
             height = 7, color = header_bg,
@@ -134,14 +152,14 @@ def main(config):
         price_row,
     ])
 
-    # ── CHART + PRICE: sparkline spans full 24px, price centered on top ───
+    # ── CHART + PRICE: sparkline fills 24px, price pinned near bottom ──────
     content = render.Stack(children = [
         make_sparkline(closes, 64, 24, accent),
         render.Box(
             height = 24,
             child = render.Column(
-                expanded = True, main_align = "center", cross_align = "center",
-                children = [price_widget],
+                expanded = True, main_align = "end", cross_align = "center",
+                children = [render.Padding(pad = (0, 0, 0, 2), child = price_widget)],
             ),
         ),
     ])
