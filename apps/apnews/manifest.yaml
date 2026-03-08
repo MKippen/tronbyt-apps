@@ -1,0 +1,9 @@
+---
+id: apnews
+name: AP Top News
+summary: Latest AP news headline
+desc: Shows the current top story from Associated Press with a scrolling headline.
+author: tronbyt
+fileName: apnews.star
+packageName: apnews
+recommendedInterval: 30
