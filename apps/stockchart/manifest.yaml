@@ -1,0 +1,9 @@
+---
+id: stockchart
+name: Stock Chart
+summary: Stock price with 3-day sparkline
+desc: Shows current price, daily % change, and a 3-day price sparkline. Header and chart color shift green when up, red when down. Animated icon splash intro.
+author: tronbyt
+fileName: stockchart.star
+packageName: stockchart
+recommendedInterval: 5
