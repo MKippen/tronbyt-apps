@@ -330,7 +330,8 @@ def main(config):
 
     # ── ANIMATION ─────────────────────────────────────────────────────────
     # Phase 1: icon splash holds
-    # Phase 2: data view slides in from the right (eased), splash underneath
+    # Phase 2: data slides in over solid black (self-contained frames, no stack
+    #          over splash so the icon can't bleed through)
     # Phase 3: data holds, then loops
     frames = []
 
@@ -340,10 +341,13 @@ def main(config):
     for i in range(SLIDE_FRAMES):
         t = ease((i + 1.0) / SLIDE_FRAMES)
         pad = int(64.0 * (1.0 - t))
-        frames.append(render.Stack(children = [
-            splash,
-            render.Padding(pad = (pad, 0, 0, 0), child = data),
-        ]))
+        frames.append(render.Box(
+            width = 64, height = 32, color = "#000000",
+            child = render.Row(children = [
+                render.Box(width = pad, height = 32),
+                data,
+            ]),
+        ))
 
     for _ in range(DATA_FRAMES):
         frames.append(data)

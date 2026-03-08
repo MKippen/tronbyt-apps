@@ -212,10 +212,15 @@ for _ in range(SPLASH_FRAMES):
 for i in range(SLIDE_FRAMES):
     t = ease((i + 1.0) / SLIDE_FRAMES)
     pad = int(64.0 * (1.0 - t))
-    frames.append(render.Stack(children = [
-        splash,
-        render.Padding(pad = (pad, 0, 0, 0), child = data),
-    ]))
+    # Self-contained frame (black box + Row spacer) — never stack over splash
+    # or WebP delta frames let the splash bleed through during the transition.
+    frames.append(render.Box(
+        width = 64, height = 32, color = "#000000",
+        child = render.Row(children = [
+            render.Box(width = pad, height = 32),
+            data,
+        ]),
+    ))
 for _ in range(DATA_FRAMES):
     frames.append(data)
 
