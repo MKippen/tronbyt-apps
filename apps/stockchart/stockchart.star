@@ -1,29 +1,13 @@
 """
 Applet: Stock Chart
-Summary: Stock price with 3-day sparkline
-Description: Shows current price, daily % change, and a 3-day price sparkline. Header and chart color shift green when up, red when down. Animated icon splash intro.
+Summary: Stock price with 5-day sparkline
+Description: Shows current price, daily % change, and a 5-day price sparkline. Header and chart color shift green when up, red when down.
 Author: tronbyt
 """
 
 load("http.star", "http")
 load("render.star", "render")
 load("schema.star", "schema")
-
-OPENMOJI_BASE = "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/color/72x72/"
-
-SPLASH_FRAMES = 25
-SLIDE_FRAMES  = 12
-DATA_FRAMES   = 1500
-FRAME_DELAY   = 80
-
-def ease(t):
-    if t < 0.5:
-        return 2.0 * t * t
-    return -1.0 + (4.0 - 2.0 * t) * t
-
-def load_emoji(code):
-    rep = http.get(OPENMOJI_BASE + code + ".png", ttl_seconds = 86400)
-    return rep.body() if rep.status_code == 200 else None
 
 def fetch_quote(symbol):
     url = (
@@ -38,8 +22,6 @@ def fetch_quote(symbol):
     return results[0] if results else None
 
 def format_price(price):
-    if price >= 1000:
-        return str(int(price + 0.5))
     if price >= 100:
         return str(int(price + 0.5))
     if price >= 10:
@@ -68,8 +50,7 @@ def make_sparkline(prices, width, height, color):
     rng = max_p - min_p
     if rng == 0.0:
         rng = 0.01
-    n = len(clean)
-    bar_w = width // n
+    bar_w = width // len(clean)
     if bar_w < 1:
         bar_w = 1
     pts = clean[-(width // bar_w):]
@@ -110,29 +91,16 @@ def main(config):
     prev    = float(meta.get("previousClose") or current)
     closes  = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
 
-    is_up      = current >= prev
-    accent     = up_color if is_up else dn_color
-    header_bg  = "#091509" if is_up else "#150909"
-    price_str  = format_price(current)
-    pct_str    = format_pct(current, prev)
-    emoji_code = "1F4C8" if is_up else "1F4C9"
-    icon_img   = load_emoji(emoji_code)
+    is_up     = current >= prev
+    accent    = up_color if is_up else dn_color
+    header_bg = "#091509" if is_up else "#150909"
+    price_str = format_price(current)
+    pct_str   = format_pct(current, prev)
 
-    # ── SPLASH: chart emoji centered on near-black ─────────────────────────
-    big_icon = render.Image(src = icon_img, width = 28, height = 28) if icon_img else render.Box(width = 28, height = 28)
-    splash = render.Box(
-        width = 64, height = 32, color = "#111111",
-        child = render.Column(
-            expanded = True, main_align = "center", cross_align = "center",
-            children = [big_icon],
-        ),
-    )
-
-    # ── DATA VIEW ──────────────────────────────────────────────────────────
-    # Header (8px + 1px accent): ticker left, % change right
+    # ── HEADER (8px + 1px accent): ticker left, % change right ────────────
     header = render.Column(children = [
         render.Box(
-            height = 8, color = header_bg,
+            height = 7, color = header_bg,
             child = render.Row(
                 expanded = True,
                 main_align = "space_between",
@@ -146,42 +114,39 @@ def main(config):
         render.Box(width = 64, height = 1, color = accent),
     ])
 
-    # Price (15px): $ small baseline, number large
-    price_widget = render.Row(
+    # ── PRICE with drop shadow ─────────────────────────────────────────────
+    shadow_row = render.Row(
+        cross_align = "end",
+        children = [
+            render.Padding(pad = (0, 0, 0, 1), child = render.Text("$", font = "tb-8", color = "#000000")),
+            render.Text(price_str, font = "terminus-14", color = "#000000"),
+        ],
+    )
+    price_row = render.Row(
         cross_align = "end",
         children = [
             render.Padding(pad = (0, 0, 0, 1), child = render.Text("$", font = "tb-8", color = "#FFFFFF")),
             render.Text(price_str, font = "terminus-14", color = "#FFFFFF"),
         ],
     )
-    price_area = render.Box(
-        height = 15,
-        child = render.Column(
-            expanded = True, main_align = "center", cross_align = "center",
-            children = [price_widget],
+    price_widget = render.Stack(children = [
+        render.Padding(pad = (1, 1, 0, 0), child = shadow_row),
+        price_row,
+    ])
+
+    # ── CHART + PRICE: sparkline spans full 24px, price centered on top ───
+    content = render.Stack(children = [
+        make_sparkline(closes, 64, 24, accent),
+        render.Box(
+            height = 24,
+            child = render.Column(
+                expanded = True, main_align = "center", cross_align = "center",
+                children = [price_widget],
+            ),
         ),
-    )
+    ])
 
-    # Sparkline (8px): 3-day price chart, accent colored
-    chart = make_sparkline(closes, 64, 8, accent)
-
-    data = render.Column(children = [header, price_area, chart])
-
-    # ── ANIMATION ──────────────────────────────────────────────────────────
-    frames = []
-    for _ in range(SPLASH_FRAMES):
-        frames.append(splash)
-    for i in range(SLIDE_FRAMES):
-        t = ease((i + 1.0) / SLIDE_FRAMES)
-        pad = int(64.0 * (1.0 - t))
-        frames.append(render.Stack(children = [
-            splash,
-            render.Padding(pad = (pad, 0, 0, 0), child = data),
-        ]))
-    for _ in range(DATA_FRAMES):
-        frames.append(data)
-
-    return render.Root(delay = FRAME_DELAY, child = render.Animation(children = frames))
+    return render.Root(child = render.Column(children = [header, content]))
 
 def get_schema():
     return schema.Schema(

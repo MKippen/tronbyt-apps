@@ -252,11 +252,11 @@ def main(config):
     )
 
     # ── DATA VIEW: the station layout ─────────────────────────────────────
-    # Header (10px): 9px band + 1px accent line
+    # Header (9px): 8px band + 1px accent line — 8px matches icon/tom-thumb height exactly
     icon_widget = render.Image(src = station_icon, width = 8, height = 8) if station_icon else render.Box(width = 8, height = 8)
     top = render.Column(children = [
         render.Box(
-            height = 9,
+            height = 8,
             color = header_color,
             child = render.Row(
                 cross_align = "center",
@@ -282,7 +282,7 @@ def main(config):
         hero = render.Text(num1, font = "terminus-14", color = color1)
 
     middle = render.Box(
-        height = 15,
+        height = 16,
         child = render.Column(
             expanded = True,
             main_align = "center",
