@@ -5,12 +5,21 @@ Description: Clock with day/date header, time with AM/PM inline, and live weathe
 Author: tronbyt
 """
 
+load("encoding/base64.star", "base64")
 load("http.star", "http")
 load("render.star", "render")
 load("schema.star", "schema")
 load("time.star", "time")
 
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
+
+# 5×5 px weather icons (RGB PNG, base64)
+ICON_SUN     = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAGklEQVR4nGNgAIP/JxgYkFkIEoiREYY8mn4AqagXHLCmy4gAAAAASUVORK5CYII="
+ICON_CLOUD   = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAHklEQVR4nGNgYGDombYAiBggAMJBCCHzQULofDQAAMh+HCEDHRY6AAAAAElFTkSuQmCC"
+ICON_FOG     = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAEklEQVR4nGPombYAGTGgAxLlAR4QGl/gnS5/AAAAAElFTkSuQmCC"
+ICON_RAIN    = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAHklEQVR4nGNgYGDombYAghiQOQihgJ5ncBKFg0UIAIsCGl9MrWweAAAAAElFTkSuQmCC"
+ICON_SNOW    = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAHUlEQVR4nGM4cec/AwMDMgmiIAiFg0WIAU0nkAQA/fss1FQ6GCUAAAAASUVORK5CYII="
+ICON_THUNDER = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAF0lEQVR4nGNgYGD4fwKEEACFg0UenxIAS9AOOSQovpIAAAAASUVORK5CYII="
 
 def sky_color(hour, wmo):
     """Dynamic accent: nighttime = atmospheric time-based, daytime = weather-driven."""
@@ -53,6 +62,20 @@ def wmo_label(code):
     elif code <= 99:
         return "Tstorm"
     return ""
+
+def wmo_icon(code):
+    if code == None or code <= 1:
+        return base64.decode(ICON_SUN)
+    elif code <= 3:
+        return base64.decode(ICON_CLOUD)
+    elif code <= 48:
+        return base64.decode(ICON_FOG)
+    elif code <= 77:
+        return base64.decode(ICON_RAIN)
+    elif code <= 82:
+        return base64.decode(ICON_RAIN)
+    else:
+        return base64.decode(ICON_THUNDER)
 
 def fetch_weather(lat, lon, use_f):
     unit = "fahrenheit" if use_f else "celsius"
@@ -123,15 +146,25 @@ def main(config):
 
     # ── WEATHER STRIP (6px) ───────────────────────────────────────────────
     if temp != None:
-        unit_sym  = "F" if use_f else "C"
-        temp_str  = str(int(temp)) + "°" + unit_sym + "  " + wmo_label(wmo)
+        unit_sym = "F" if use_f else "C"
+        temp_str = str(int(temp)) + "°" + unit_sym
+        icon_img = wmo_icon(wmo)
+        weather_children = [
+            render.Image(src = icon_img, width = 5, height = 5),
+            render.Padding(
+                pad = (2, 0, 0, 0),
+                child = render.Text(temp_str, font = "tom-thumb", color = "#888888"),
+            ),
+        ]
     else:
-        temp_str = ""
+        weather_children = []
     weather_area = render.Box(
         height = 6,
-        child = render.Column(
-            expanded = True, main_align = "center", cross_align = "center",
-            children = [render.Text(temp_str, font = "tom-thumb", color = "#888888")],
+        child = render.Row(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = weather_children,
         ),
     )
 
