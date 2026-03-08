@@ -137,11 +137,46 @@ def fetch_entity(entity_id, ha_url, ha_token):
     attrs = data.get("attributes", {})
     return data.get("state", "N/A"), attrs.get("unit_of_measurement", ""), attrs.get("friendly_name", "")
 
+def _hex2(n):
+    n = max(0, min(255, int(n + 0.5)))
+    d = "0123456789ABCDEF"
+    return d[n >> 4] + d[n & 15]
+
+def _hex_to_rgb(c):
+    h = c.lstrip("#").upper()
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+def _lerp_color(ca, cb, t):
+    ra, ga, ba = _hex_to_rgb(ca)
+    rb, gb, bb = _hex_to_rgb(cb)
+    return "#" + _hex2(ra + t * (rb - ra)) + _hex2(ga + t * (gb - ga)) + _hex2(ba + t * (bb - ba))
+
+def _gradient_color(val, low_v, mid_v, high_v, low_c, mid_c, high_c):
+    if val <= low_v:
+        return low_c
+    if val >= high_v:
+        return high_c
+    if val <= mid_v:
+        return _lerp_color(low_c, mid_c, (val - low_v) / (mid_v - low_v))
+    return _lerp_color(mid_c, high_c, (val - mid_v) / (high_v - mid_v))
+
 def get_value_color(state, config, suffix):
     normal = config.get("normal_color" + suffix) or "#FFFFFF"
     if not is_numeric(state):
         return normal
     val = float(state)
+
+    # Gradient mode: smoothly blend low → normal → high color by value position
+    if config.get("gradient" + suffix) == "true":
+        low_v = config.get("below_value" + suffix) or ""
+        mid_v = config.get("normal_value" + suffix) or ""
+        high_v = config.get("above_value" + suffix) or ""
+        low_c = config.get("below_color" + suffix) or "#4488FF"
+        high_c = config.get("above_color" + suffix) or "#FF4444"
+        if is_numeric(low_v) and is_numeric(mid_v) and is_numeric(high_v):
+            return _gradient_color(val, float(low_v), float(mid_v), float(high_v), low_c, normal, high_c)
+
+    # Threshold mode (default): hard switch at boundaries
     above_val = config.get("above_value" + suffix) or ""
     below_val = config.get("below_value" + suffix) or ""
     if above_val and is_numeric(above_val) and val > float(above_val):
@@ -434,6 +469,20 @@ def get_schema():
                 icon = "palette",
                 default = "#4488FF",
                 palette = ["#4488FF", "#00AAFF", "#0044FF"],
+            ),
+            schema.Toggle(
+                id = "gradient_1",
+                name = "Sensor 1 Dynamic Gradient",
+                desc = "Smoothly blend color between low, normal, and high — e.g. 59°F is slightly blue, 78°F slightly red",
+                icon = "palette",
+                default = False,
+            ),
+            schema.Text(
+                id = "normal_value_1",
+                name = "Sensor 1 Normal Value",
+                desc = "The comfortable midpoint for gradient mode (e.g. 70). Color interpolates: Low Color → Normal Color → High Color",
+                icon = "hashtag",
+                default = "",
             ),
             # Sensor 2
             schema.Text(
