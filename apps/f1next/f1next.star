@@ -73,10 +73,10 @@ def main(config):
     # ── SPLASH: F1 logo centered on dark red ──────────────────────────────
     logo_img = base64.decode(F1_LOGO_B64)
     splash = render.Box(
-        width = 64, height = 32, color = HEADER_BG,
+        width = 64, height = 32, color = "#000000",
         child = render.Column(
             expanded = True, main_align = "center", cross_align = "center",
-            children = [render.Image(src = logo_img, width = 64, height = 16)],
+            children = [render.Image(src = logo_img, width = 48, height = 12)],
         ),
     )
 
