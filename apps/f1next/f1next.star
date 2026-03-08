@@ -58,12 +58,6 @@ def main(config):
         race_dt  = time.parse_time(race_date + "T12:00:00Z", "2006-01-02T15:04:05Z", "UTC").in_location(tz)
         time_str = "TBD"
 
-    # Only show within 5 days of the race start; hide after it's done
-    now        = time.now().in_location(tz)
-    diff_hours = (race_dt - now).hours
-    if diff_hours > 5 * 24 or diff_hours < -3:
-        return None
-
     date_str   = race_dt.format("Jan 2")
     locality   = race.get("Circuit", {}).get("Location", {}).get("locality", "?").upper()
     round_str  = "R" + race.get("round", "?")
