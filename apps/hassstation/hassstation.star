@@ -11,6 +11,18 @@ load("schema.star", "schema")
 
 OPENMOJI_BASE = "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/color/72x72/"
 
+# Animation timing
+SPLASH_FRAMES = 25  # icon holds for ~2s
+SLIDE_FRAMES = 12   # slide transition ~1s
+DATA_FRAMES = 100   # data holds for ~8s
+FRAME_DELAY = 80    # ms per frame
+
+def ease(t):
+    # Smooth ease-in-out — slow start, fast middle, slow end
+    if t < 0.5:
+        return 2.0 * t * t
+    return -1.0 + (4.0 - 2.0 * t) * t
+
 STATION_EMOJIS = [
     # Plants & Garden
     ("🪴 Potted Plant", "1FAB4"),
@@ -59,12 +71,20 @@ def is_numeric(s):
         return parts[0].isdigit() and parts[1].isdigit() and len(parts[0]) > 0
     return False
 
-def format_value(state, unit):
+def format_value(state, unit, decimals):
     display = state
-    if is_numeric(state) and "." in state:
-        parts = state.split(".")
-        decimal = parts[1].rstrip("0")
-        display = (parts[0] + "." + decimal) if decimal else parts[0]
+    if is_numeric(state):
+        val = float(state)
+        if decimals == 0:
+            rounded = int(val + 0.5) if val >= 0.0 else int(val - 0.5)
+            display = str(rounded)
+        elif decimals == 1:
+            r = int(val * 10.0 + 0.5) if val >= 0.0 else int(val * 10.0 - 0.5)
+            display = str(r // 10) + "." + str(r % 10)
+        else:
+            r = int(val * 100.0 + 0.5) if val >= 0.0 else int(val * 100.0 - 0.5)
+            dec = str(r % 100)
+            display = str(r // 100) + "." + (dec if len(dec) == 2 else "0" + dec)
     return (display + unit) if unit else display
 
 def fetch_entity(entity_id, ha_url, ha_token):
@@ -112,13 +132,15 @@ def main(config):
     # Primary entity (middle row — hero metric)
     entity_id_1 = config.get("entity_id_1") or ""
     state1, unit1, _ = fetch_entity(entity_id_1, ha_url, ha_token)
-    value1 = format_value(state1, config.get("unit_1") or unit1 or "")
+    decimals1 = int(config.get("decimals_1") or "0")
+    value1 = format_value(state1, config.get("unit_1") or unit1 or "", decimals1)
     color1 = get_value_color(state1, config, "_1")
 
     # Secondary entity — left slot of bottom bar
     entity_id_2 = config.get("entity_id_2") or ""
     state2, unit2, _ = fetch_entity(entity_id_2, ha_url, ha_token)
-    value2 = format_value(state2, config.get("unit_2") or unit2 or "")
+    decimals2 = int(config.get("decimals_2") or "0")
+    value2 = format_value(state2, config.get("unit_2") or unit2 or "", decimals2)
     color2 = get_value_color(state2, config, "_2")
 
     # Tertiary entity — right slot of bottom bar (optional)
@@ -127,13 +149,28 @@ def main(config):
     color3 = "#888888"
     if entity_id_3:
         state3, unit3, _ = fetch_entity(entity_id_3, ha_url, ha_token)
-        value3 = format_value(state3, config.get("unit_3") or unit3 or "")
+        decimals3 = int(config.get("decimals_3") or "0")
+        value3 = format_value(state3, config.get("unit_3") or unit3 or "", decimals3)
         color3 = get_value_color(state3, config, "_3")
 
     station_icon = load_emoji(station_emoji)
 
-    # ── HEADER (10px): 9px band + 1px accent line ────────────────────────
-    # Icon is 8×8 in a 9px row — cross_align centers it with ~0.5px breathing
+    # ── SPLASH: big icon centered on dark bg ──────────────────────────────
+    big_icon = render.Image(src = station_icon, width = 28, height = 28) if station_icon else render.Box(width = 28, height = 28)
+    splash = render.Box(
+        width = 64,
+        height = 32,
+        color = header_color,
+        child = render.Column(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = [big_icon],
+        ),
+    )
+
+    # ── DATA VIEW: the station layout ─────────────────────────────────────
+    # Header (10px): 9px band + 1px accent line
     icon_widget = render.Image(src = station_icon, width = 8, height = 8) if station_icon else render.Box(width = 8, height = 8)
     top = render.Column(children = [
         render.Box(
@@ -150,8 +187,7 @@ def main(config):
         render.Box(width = 64, height = 1, color = accent_color),
     ])
 
-    # ── PRIMARY (15px): temperature in terminus-14, centered ──────────────
-    # terminus-14 is 14px tall → 0.5px breathing each side in 15px zone
+    # Primary (15px): hero metric centered
     middle = render.Box(
         height = 15,
         child = render.Column(
@@ -162,8 +198,7 @@ def main(config):
         ),
     )
 
-    # ── BOTTOM QUARTER (8px): secondary entities ──────────────────────────
-    # One or two entities fill the bottom strip with equal-width slots
+    # Bottom (7px): secondary entities
     if value3:
         bottom_child = render.Row(
             expanded = True,
@@ -198,10 +233,31 @@ def main(config):
         )
 
     bottom = render.Box(height = 7, child = bottom_child)
+    data = render.Column(children = [top, middle, bottom])
 
-    # top(10) + middle(15) + bottom(7) = 32px
+    # ── ANIMATION ─────────────────────────────────────────────────────────
+    # Phase 1: icon splash holds
+    # Phase 2: data view slides in from the right (eased), splash underneath
+    # Phase 3: data holds, then loops
+    frames = []
+
+    for _ in range(SPLASH_FRAMES):
+        frames.append(splash)
+
+    for i in range(SLIDE_FRAMES):
+        t = ease((i + 1.0) / SLIDE_FRAMES)
+        pad = int(64.0 * (1.0 - t))
+        frames.append(render.Stack(children = [
+            splash,
+            render.Padding(pad = (pad, 0, 0, 0), child = data),
+        ]))
+
+    for _ in range(DATA_FRAMES):
+        frames.append(data)
+
     return render.Root(
-        child = render.Column(children = [top, middle, bottom]),
+        delay = FRAME_DELAY,
+        child = render.Animation(children = frames),
     )
 
 def get_schema():
@@ -271,6 +327,18 @@ def get_schema():
                 icon = "ruler",
                 default = "",
             ),
+            schema.Dropdown(
+                id = "decimals_1",
+                name = "Sensor 1 Decimal Places",
+                desc = "Number of decimal places to show for sensor 1",
+                icon = "hashtag",
+                default = "0",
+                options = [
+                    schema.Option(display = "0 — whole number (61°F)", value = "0"),
+                    schema.Option(display = "1 — one decimal (61.2°F)", value = "1"),
+                    schema.Option(display = "2 — two decimals (61.23°F)", value = "2"),
+                ],
+            ),
             schema.Color(
                 id = "normal_color_1",
                 name = "Sensor 1 Normal Color",
@@ -322,6 +390,18 @@ def get_schema():
                 desc = "Override the displayed unit (leave blank to use HA value)",
                 icon = "ruler",
                 default = "",
+            ),
+            schema.Dropdown(
+                id = "decimals_2",
+                name = "Sensor 2 Decimal Places",
+                desc = "Number of decimal places to show for sensor 2",
+                icon = "hashtag",
+                default = "0",
+                options = [
+                    schema.Option(display = "0 — whole number", value = "0"),
+                    schema.Option(display = "1 — one decimal", value = "1"),
+                    schema.Option(display = "2 — two decimals", value = "2"),
+                ],
             ),
             schema.Color(
                 id = "normal_color_2",
@@ -375,6 +455,18 @@ def get_schema():
                 desc = "Override the displayed unit (leave blank to use HA value)",
                 icon = "ruler",
                 default = "",
+            ),
+            schema.Dropdown(
+                id = "decimals_3",
+                name = "Sensor 3 Decimal Places",
+                desc = "Number of decimal places to show for sensor 3",
+                icon = "hashtag",
+                default = "0",
+                options = [
+                    schema.Option(display = "0 — whole number", value = "0"),
+                    schema.Option(display = "1 — one decimal", value = "1"),
+                    schema.Option(display = "2 — two decimals", value = "2"),
+                ],
             ),
             schema.Color(
                 id = "normal_color_3",
