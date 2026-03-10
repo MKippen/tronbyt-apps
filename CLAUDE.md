@@ -240,6 +240,7 @@ return render.Root(delay = FRAME_DELAY, child = render.Animation(children = fram
 | Unit suffix baseline lift | `pad = (0, 0, 0, 1)` on `tb-8` text |
 | Bottom-pinned value | `pad = (0, 0, 0, 2)` on value, `main_align = "end"` |
 | Drop shadow offset | `pad = (1, 1, 0, 0)` on shadow layer |
+| **Edge breathing room** | Always at least 1px padding from top/bottom/left/right edges — never place text flush against the display boundary |
 
 ---
 

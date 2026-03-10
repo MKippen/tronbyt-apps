@@ -127,7 +127,7 @@ def main(config):
                 main_align = "space_between",
                 cross_align = "center",
                 children = [
-                    render.Padding(pad = (2, 0, 0, 0), child = render.Text("DOG FEED", font = "tom-thumb", color = "#CCCCCC")),
+                    render.Padding(pad = (2, 0, 0, 0), child = render.Text("PUPS", font = "tom-thumb", color = "#CCCCCC")),
                     render.Padding(pad = (0, 0, 2, 0), child = render.Text(status_text, font = "tom-thumb", color = accent)),
                 ],
             ),
@@ -169,8 +169,9 @@ def main(config):
                             ],
                         ),
                     ),
-                    render.Box(height = 2),
+                    render.Box(height = 1),
                     render.Text(meal_time, font = "tom-thumb", color = "#666666"),
+                    render.Box(height = 1),
                 ],
             ),
         )
