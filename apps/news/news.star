@@ -163,23 +163,28 @@ def main(config):
         ],
     )
 
-    # Create text display for the first headline only
-    headline_widget = render.Column(
-        children = [
-            # Title in yellow
-            render.WrappedText(
-                content = headlines[0]["title"],
-                color = config.get("headline_color", DEFAULT_COLORS["headline"]),
-                width = 64,
-            ),
-            # Description in white
-            render.WrappedText(
-                content = headlines[0]["description"],
-                color = config.get("desc_color", DEFAULT_COLORS["desc"]),
-                width = 64,
-            ),
-        ],
-    )
+    # Create text display for up to 3 headlines
+    headline_children = []
+    for i, story in enumerate(headlines):
+        if i > 0:
+            # Separator between stories
+            headline_children.append(render.Box(width = 64, height = 2))
+            headline_children.append(render.Box(width = 64, height = 1, color = "#333333"))
+            headline_children.append(render.Box(width = 64, height = 2))
+        # Title in yellow
+        headline_children.append(render.WrappedText(
+            content = story["title"],
+            color = config.get("headline_color", DEFAULT_COLORS["headline"]),
+            width = 64,
+        ))
+        # Description in white
+        headline_children.append(render.WrappedText(
+            content = story["description"],
+            color = config.get("desc_color", DEFAULT_COLORS["desc"]),
+            width = 64,
+        ))
+
+    headline_widget = render.Column(children = headline_children)
 
     # Combine all elements into one scrollable column
     all_content = render.Column(
@@ -221,8 +226,8 @@ def get_headlines(feed_url):
 
     items = []
 
-    # Changed: Only process the first item instead of multiple
-    process_count = 1  # Only get the first item
+    # Get up to 3 top stories
+    process_count = min(3, len(titles))
 
     for i in range(process_count):
         title = titles[i]

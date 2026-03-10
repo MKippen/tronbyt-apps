@@ -1,0 +1,7 @@
+id: countdown
+name: Countdown
+summary: Days until event
+desc: Countdown timer showing days remaining until a configurable event with accent color.
+author: tronbyt
+fileName: countdown.star
+packageName: countdown

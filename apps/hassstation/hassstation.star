@@ -340,12 +340,12 @@ def main(config):
 
     for i in range(SLIDE_FRAMES):
         t = ease((i + 1.0) / SLIDE_FRAMES)
-        pad = int(64.0 * (1.0 - t))
+        offset = int(64.0 * (1.0 - t))
         frames.append(render.Box(
             width = 64, height = 32, color = "#000000",
             child = render.Row(children = [
-                render.Box(width = pad, height = 32),
-                data,
+                render.Padding(pad = (-64 + offset, 0, 0, 0), child = splash),
+                render.Padding(pad = (offset, 0, 0, 0), child = data),
             ]),
         ))
 

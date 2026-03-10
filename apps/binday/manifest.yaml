@@ -1,0 +1,7 @@
+id: binday
+name: Bin Day
+summary: Garbage/recycling reminder
+desc: Shows which bins to take out. Reads from Home Assistant input_boolean entities. Only shows on Sunday as a reminder for Monday pickup.
+author: tronbyt
+fileName: binday.star
+packageName: binday

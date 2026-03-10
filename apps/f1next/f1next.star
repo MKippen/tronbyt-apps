@@ -58,6 +58,12 @@ def main(config):
         race_dt  = time.parse_time(race_date + "T12:00:00Z", "2006-01-02T15:04:05Z", "UTC").in_location(tz)
         time_str = "TBD"
 
+    # Skip if race is more than 7 days away
+    now = time.now().in_location(tz)
+    diff_hours = (race_dt - now).hours
+    if diff_hours > 7 * 24 or diff_hours < -24:
+        return None
+
     date_str   = race_dt.format("Jan 2")
     locality   = race.get("Circuit", {}).get("Location", {}).get("locality", "?").upper()
     round_str  = "R" + race.get("round", "?")
@@ -111,7 +117,6 @@ def main(config):
             children = [
                 render.Padding(pad = (2, 0, 0, 0), child = render.Text(date_str, font = "5x8", color = "#FFFFFF")),
                 render.Padding(pad = (2, 2, 0, 0), child = render.Text(time_str, font = "tom-thumb", color = ACCENT)),
-                render.Padding(pad = (2, 0, 0, 0), child = render.Text(round_lbl, font = "tom-thumb", color = "#666666")),
             ],
         ),
     )
@@ -127,12 +132,12 @@ def main(config):
         frames.append(splash)
     for i in range(SLIDE_FRAMES):
         t   = ease((i + 1.0) / SLIDE_FRAMES)
-        pad = int(64.0 * (1.0 - t))
+        offset = int(64.0 * (1.0 - t))
         frames.append(render.Box(
             width = 64, height = 32, color = "#000000",
             child = render.Row(children = [
-                render.Box(width = pad, height = 32),
-                data,
+                render.Padding(pad = (-64 + offset, 0, 0, 0), child = splash),
+                render.Padding(pad = (offset, 0, 0, 0), child = data),
             ]),
         ))
     for _ in range(DATA_FRAMES):

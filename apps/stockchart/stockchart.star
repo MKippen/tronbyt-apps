@@ -15,7 +15,7 @@ def fetch_quote(symbol):
         symbol +
         "?interval=30m&range=5d"
     )
-    rep = http.get(url, ttl_seconds = 300, headers = {"User-Agent": "Mozilla/5.0"})
+    rep = http.get(url, ttl_seconds = 3600, headers = {"User-Agent": "Mozilla/5.0"})
     if rep.status_code != 200:
         return None
     results = rep.json().get("chart", {}).get("result", [])

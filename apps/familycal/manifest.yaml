@@ -1,0 +1,7 @@
+id: familycal
+name: Family Calendar
+summary: Upcoming family events
+desc: Shows upcoming events from a Home Assistant calendar with scrolling event list.
+author: tronbyt
+fileName: familycal.star
+packageName: familycal

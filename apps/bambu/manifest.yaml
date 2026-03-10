@@ -1,0 +1,9 @@
+---
+id: bambu
+name: MR 3D
+summary: 3D printer status
+desc: Shows 3D printer status from Home Assistant — progress bar, temps, time remaining, task name.
+author: tronbyt
+fileName: bambu.star
+packageName: bambu
+recommendedInterval: 2

@@ -1,0 +1,9 @@
+---
+id: dogfeed
+name: Dog Feed
+summary: Dog feeding status
+desc: Shows breakfast and dinner feeding status from Home Assistant. Green when fed, red when hungry.
+author: tronbyt
+fileName: dogfeed.star
+packageName: dogfeed
+recommendedInterval: 2

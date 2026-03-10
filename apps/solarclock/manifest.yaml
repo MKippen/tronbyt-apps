@@ -1,0 +1,7 @@
+id: solarclock
+name: Solar Clock
+summary: Clock with solar gradient
+desc: Clean clock with smooth gradient background reflecting current weather and time of day. Dawn, dusk, clear, cloudy, rain, snow — each has its own color palette.
+author: tronbyt
+fileName: solarclock.star
+packageName: solarclock

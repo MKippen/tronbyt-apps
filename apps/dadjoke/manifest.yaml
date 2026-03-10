@@ -1,0 +1,9 @@
+---
+id: dadjoke
+name: Dad Joke
+summary: Random dad joke
+desc: Displays a random dad joke from icanhazdadjoke.com. Scrolls vertically so you can read the whole thing.
+author: tronbyt
+fileName: dadjoke.star
+packageName: dadjoke
+recommendedInterval: 10

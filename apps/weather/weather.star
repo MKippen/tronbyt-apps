@@ -146,11 +146,34 @@ def main(config):
     else:
         return error_display("No API Key Provided", scale)
 
+    # Fetch sunrise/sunset data
+    sun_data = None
+    if showthreeday:
+        sun_data = fetch_sun_times(lat, lng, units, api_v3_key or api_v2_key, cache_sec, timezone)
+
     # Create the display
     if showthreeday:
-        return render_weather(daily_data, scale)
+        return render_weather(daily_data, scale, sun_data)
     else:
         return render_single_day(daily_data, scale)
+
+def fetch_sun_times(lat, lng, units, api_key, cache_sec, timezone):
+    """Fetch sunrise/sunset from current weather endpoint (works with both v2.5 and v3 keys)."""
+    if not api_key:
+        return None
+    url = "https://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&units={}&appid={}".format(lat, lng, units, api_key)
+    rep = http.get(url, ttl_seconds = cache_sec)
+    if rep.status_code != 200:
+        return None
+    data = json.decode(rep.body())
+    sys_data = data.get("sys", {})
+    sunrise_ts = sys_data.get("sunrise", 0)
+    sunset_ts = sys_data.get("sunset", 0)
+    if sunrise_ts == 0 or sunset_ts == 0:
+        return None
+    sunrise = time.from_timestamp(sunrise_ts).in_location(timezone)
+    sunset = time.from_timestamp(sunset_ts).in_location(timezone)
+    return {"sunrise": sunrise, "sunset": sunset}
 
 def render_single_day(daily_data, scale = 1):
     if len(daily_data) < 2:  # If we don't have at least 2 days
@@ -631,6 +654,10 @@ def process_forecast(forecast_list, timezone):
                 "low": temp,
                 "weather": weather_main,
                 "date": day_time,
+                "wind": item.get("wind", {}).get("speed", 0),
+                "humidity": item.get("main", {}).get("humidity", 0),
+                "pop": item.get("pop", 0),
+                "feels_like": item.get("main", {}).get("feels_like", temp),
             }
         else:
             days[day_key]["high"] = max(days[day_key]["high"], temp)
@@ -684,87 +711,250 @@ def get_weather_icon(forecast, scale = 1):
         icon = WEATHER_ICONS.get(forecast)
     return icon.readall() if icon else ""
 
-def render_weather(daily_data, scale = 1):
-    # Create weather icons mapping
+def _ease(t):
+    if t < 0.5:
+        return 2.0 * t * t
+    return -1.0 + (4.0 - 2.0 * t) * t
 
-    # Calculate dimensions
-    DAY_WIDTH = 20 * scale
-    DIVIDER_WIDTH = scale
-    TOTAL_WIDTH = (DAY_WIDTH * 3) + (DIVIDER_WIDTH * 2)
-    HEIGHT = 32 * scale
-    SUFFIX = "°" if scale == 2 else ""
+def render_weather(daily_data, scale = 1, sun_data = None):
+    if len(daily_data) < 1:
+        return error_display("No data", scale)
 
-    # Create columns first
-    columns = []
-    for i, day in enumerate(daily_data):
-        # Get day abbreviation
-        day_abbr = day["date"].format("Mon")[:3].upper()
-        day_abbr = tr(day_abbr)
+    accent = "#4488CC"
+    header_bg = "#111111"
+    today = daily_data[0]
 
-        # Create day column
-        day_column = render.Column(
+    # ── STAGE 1: Current weather with header ─────────────────────────────
+    today_temp = "%d°" % round_temp(today["high"])
+    header = render.Column(children = [
+        render.Box(height = 1, color = header_bg),
+        render.Box(
+            height = 6, color = header_bg,
+            child = render.Row(
+                expanded = True,
+                main_align = "space_between",
+                cross_align = "center",
+                children = [
+                    render.Padding(pad = (2, 0, 0, 0), child = render.Text("WEATHER", font = "tom-thumb", color = "#CCCCCC")),
+                    render.Padding(pad = (0, 0, 2, 0), child = render.Text(today["weather"].upper().replace("_", " "), font = "tom-thumb", color = accent)),
+                ],
+            ),
+        ),
+        render.Box(width = 64, height = 1, color = accent),
+    ])
+
+    # Current: icon left, big temp + hi/lo right
+    cur_left = render.Box(
+        width = 28, height = 24,
+        child = render.Column(
             expanded = True,
-            main_align = "space_around",
+            main_align = "center",
             cross_align = "center",
             children = [
-                # Weather icon
                 render.Image(
-                    src = get_weather_icon(day["weather"], scale),
-                    width = 12 * scale,
-                    height = 12 * scale,
-                ),
-                # Day abbreviation
-                render.Text(
-                    day_abbr,
-                    font = "CG-pixel-4x5-mono" if scale == 1 else "terminus-12",
-                    color = "#FF0",
-                ),
-                # High temp
-                render.Text(
-                    "%d" % round_temp(day["high"]) + SUFFIX,
-                    font = "CG-pixel-4x5-mono" if scale == 1 else "terminus-12",
-                    color = "#FFF",
-                ),
-                # Low temp
-                render.Text(
-                    "%d" % round_temp(day["low"]) + SUFFIX,
-                    font = "CG-pixel-4x5-mono" if scale == 1 else "terminus-12",
-                    color = "#FFF",
-                ),
-            ],
-        )
-
-        columns.append(day_column)
-
-        # Add divider if not last column
-        if i < 2:
-            columns.append(
-                render.Box(
-                    width = DIVIDER_WIDTH,
-                    height = HEIGHT,
-                    color = "#444",
-                ),
-            )
-
-    # Create the display with ALL children at once
-    weather_display = render.Root(
-        child = render.Stack(
-            children = [
-                render.Box(
-                    width = TOTAL_WIDTH,
-                    height = HEIGHT,
-                    color = "#000",
-                ),
-                render.Row(
-                    expanded = True,
-                    main_align = "space_evenly",
-                    children = columns,
+                    src = get_weather_icon(today["weather"], scale),
+                    width = 20,
+                    height = 20,
                 ),
             ],
         ),
     )
 
-    return weather_display
+    pop = today.get("pop", 0)
+    cur_temp = render.Text("%d°" % round_temp(today["high"]), font = "6x13", color = "#FFFFFF")
+    rain_text = render.Text("%d%% rain" % int(pop * 100), font = "CG-pixel-3x5-mono", color = "#6688AA")
+
+    cur_right = render.Box(
+        width = 36, height = 24,
+        child = render.Column(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = [
+                cur_temp,
+                render.Padding(pad = (0, 2, 0, 0), child = rain_text),
+            ],
+        ),
+    )
+
+    cur_content = render.Box(
+        height = 24,
+        child = render.Row(
+            expanded = True,
+            cross_align = "center",
+            children = [cur_left, cur_right],
+        ),
+    )
+
+    stage1 = render.Box(
+        width = 64, height = 32, color = "#000000",
+        child = render.Column(children = [header, cur_content]),
+    )
+
+    # ── STAGE 2: 3-day forecast, full 32px height ────────────────────────
+    forecast_cols = []
+    for i, day in enumerate(daily_data[:3]):
+        day_abbr = day["date"].format("Mon")[:3].upper()
+        day_abbr = tr(day_abbr)
+        hi = "%d°" % round_temp(day["high"])
+        lo = "%d°" % round_temp(day["low"])
+        is_today = (i == 0)
+
+        day_color = accent if is_today else "#999999"
+        hi_color = "#FFFFFF" if is_today else "#CCCCCC"
+        lo_color = "#555555"
+
+        col = render.Box(
+            width = 20, height = 32,
+            child = render.Column(
+                expanded = True,
+                main_align = "center",
+                cross_align = "center",
+                children = [
+                    render.Text(day_abbr, font = "tom-thumb", color = day_color),
+                    render.Box(height = 1),
+                    render.Image(
+                        src = get_weather_icon(day["weather"], scale),
+                        width = 12,
+                        height = 12,
+                    ),
+                    render.Box(height = 1),
+                    render.Text(hi, font = "tom-thumb", color = hi_color),
+                    render.Text(lo, font = "tom-thumb", color = lo_color),
+                ],
+            ),
+        )
+
+        if i > 0:
+            forecast_cols.append(render.Box(width = 1, height = 24, color = "#222222"))
+        forecast_cols.append(col)
+
+    stage2 = render.Box(
+        width = 64, height = 32, color = "#000000",
+        child = render.Row(
+            expanded = True,
+            main_align = "center",
+            cross_align = "center",
+            children = forecast_cols,
+        ),
+    )
+
+    # ── STAGE 3: Sunrise / Sunset ────────────────────────────────────────
+    stage3 = None
+    if sun_data:
+        sunrise_str = sun_data["sunrise"].format("3:04")
+        sunrise_ampm = sun_data["sunrise"].format("PM")
+        sunset_str = sun_data["sunset"].format("3:04")
+        sunset_ampm = sun_data["sunset"].format("PM")
+
+        sun_header = render.Column(children = [
+            render.Box(height = 1, color = header_bg),
+            render.Box(
+                height = 6, color = header_bg,
+                child = render.Row(
+                    expanded = True,
+                    main_align = "space_between",
+                    cross_align = "center",
+                    children = [
+                        render.Padding(pad = (2, 0, 0, 0), child = render.Text("SUNRISE", font = "tom-thumb", color = "#FFAA33")),
+                        render.Padding(pad = (0, 0, 2, 0), child = render.Text("SUNSET", font = "tom-thumb", color = "#CC6633")),
+                    ],
+                ),
+            ),
+            render.Box(width = 64, height = 1, color = "#FFAA33"),
+        ])
+
+        # Left panel: sunrise
+        sunrise_panel = render.Box(
+            width = 31, height = 24,
+            child = render.Column(
+                expanded = True,
+                main_align = "center",
+                cross_align = "center",
+                children = [
+                    render.Text("\u2191", font = "tb-8", color = "#FFAA33"),
+                    render.Box(height = 2),
+                    render.Text(sunrise_str, font = "tb-8", color = "#FFFFFF"),
+                    render.Text(sunrise_ampm, font = "tom-thumb", color = "#FFFFFF88"),
+                ],
+            ),
+        )
+
+        # Right panel: sunset
+        sunset_panel = render.Box(
+            width = 31, height = 24,
+            child = render.Column(
+                expanded = True,
+                main_align = "center",
+                cross_align = "center",
+                children = [
+                    render.Text("\u2193", font = "tb-8", color = "#CC6633"),
+                    render.Box(height = 2),
+                    render.Text(sunset_str, font = "tb-8", color = "#FFFFFF"),
+                    render.Text(sunset_ampm, font = "tom-thumb", color = "#FFFFFF88"),
+                ],
+            ),
+        )
+
+        sun_content = render.Box(
+            height = 24,
+            child = render.Row(
+                expanded = True,
+                children = [
+                    sunrise_panel,
+                    render.Box(width = 1, height = 18, color = "#333333"),
+                    sunset_panel,
+                ],
+            ),
+        )
+
+        stage3 = render.Box(
+            width = 64, height = 32, color = "#000000",
+            child = render.Column(children = [sun_header, sun_content]),
+        )
+
+    # ── ANIMATION: stage1 10s → slide → stage2 10s → slide → stage3 10s
+    FRAME_DELAY = 80
+    HOLD = 88          # ~7s at 80ms
+    SLIDE_FRAMES = 12  # ~1s
+
+    frames = []
+    for _ in range(HOLD):
+        frames.append(stage1)
+
+    for i in range(SLIDE_FRAMES):
+        t = _ease((i + 1.0) / SLIDE_FRAMES)
+        offset = int(64.0 * t)
+        frames.append(render.Box(
+            width = 64, height = 32, color = "#000000",
+            child = render.Padding(
+                pad = (-offset, 0, 0, 0),
+                child = render.Row(children = [stage1, stage2]),
+            ),
+        ))
+
+    for _ in range(HOLD):
+        frames.append(stage2)
+
+    if stage3:
+        for i in range(SLIDE_FRAMES):
+            t = _ease((i + 1.0) / SLIDE_FRAMES)
+            offset = int(64.0 * t)
+            frames.append(render.Box(
+                width = 64, height = 32, color = "#000000",
+                child = render.Padding(
+                    pad = (-offset, 0, 0, 0),
+                    child = render.Row(children = [stage2, stage3]),
+                ),
+            ))
+
+        for _ in range(HOLD):
+            frames.append(stage3)
+
+    return render.Root(
+        delay = FRAME_DELAY,
+        child = render.Animation(children = frames),
+    )
 
 def error_display(message, scale = 1):
     return render.Root(

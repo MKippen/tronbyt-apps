@@ -1,0 +1,7 @@
+id: printdone
+name: Print Done
+summary: 3D print complete
+desc: Displays a 3D print complete notification with task name. Push from Home Assistant when a print finishes.
+author: tronbyt
+fileName: printdone.star
+packageName: printdone

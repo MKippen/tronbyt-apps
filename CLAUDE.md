@@ -245,10 +245,30 @@ return render.Root(delay = FRAME_DELAY, child = render.Animation(children = fram
 
 ## Deployment Workflow
 
-Changes to `.star` files require:
+### Dev loop (instant, no restart needed)
+
+The apps directory is **bind-mounted** into the server container at `/app/data/system-apps`. Local `.star` edits are immediately visible to the server — no push or restart required.
+
+After editing a `.star` file, just run:
+```bash
+cd /Users/mike/code/tronbyt/server && ./refresh-app.sh
+```
+
+This script:
+1. Resets the admin password and logs in
+2. Deletes all cached WebP renders from the Docker volume
+3. Cycles `/next` 20× to trigger fresh renders
+4. Confirms which apps re-rendered
+
+### Publishing to GitHub (for prod / PR)
 
 1. `git add` + `git commit` + `git push origin main`
-2. `docker compose restart web` (in `/Users/mike/code/tronbyt/server/`)
-3. Force re-render: set `renderIntervalMin: 0`, cycle `/1ae22e11/next` ~15×, restore `renderIntervalMin: 5`
+2. No restart needed — bind mount keeps server in sync with local files
 
-The server resets to remote git HEAD on every restart — local file edits are invisible until pushed. The Pixlet bytecode cache is also cleared on restart.
+### App config (installation schema fields)
+
+POST to `/devices/{id}/{iname}/config` as JSON with the schema fields nested under `"config"`:
+```json
+{"enabled":true,"uinterval":0,"display_time":0,"notes":"","color_filter":"",
+ "config":{"field1":"value1","field2":"value2"}}
+```

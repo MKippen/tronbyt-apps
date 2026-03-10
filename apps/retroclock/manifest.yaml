@@ -1,0 +1,7 @@
+id: retroclock
+name: Retro Flip Clock
+summary: Mechanical flip clock
+desc: Classic split-flap flip clock with animated digit panels and blinking colon.
+author: tronbyt
+fileName: retroclock.star
+packageName: retroclock

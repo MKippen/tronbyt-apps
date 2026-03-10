@@ -1,0 +1,7 @@
+id: co2alert
+name: CO2 Alert
+summary: High CO2 warning
+desc: Displays a high CO2 alert with PPM value. Push from Home Assistant when levels are high.
+author: tronbyt
+fileName: co2alert.star
+packageName: co2alert

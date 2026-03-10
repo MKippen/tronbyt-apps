@@ -1,0 +1,9 @@
+---
+id: holidaytoday
+name: Holiday Today
+summary: Today's US holiday with emoji
+desc: Shows today's US public holiday (or next upcoming) with a matching emoji icon. Uses the API Ninjas holidays API.
+author: tronbyt
+fileName: holidaytoday.star
+packageName: holidaytoday
+recommendedInterval: 1440
