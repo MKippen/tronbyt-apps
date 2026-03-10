@@ -50,7 +50,7 @@ def load_emoji(code):
     return None
 
 def fetch_holidays(api_key, year):
-    url = API_URL + "?country=US&year=" + year
+    url = API_URL + "?country=US"
     rep = http.get(url, ttl_seconds = 86400, headers = {"X-Api-Key": api_key})
     if rep.status_code != 200:
         return []
