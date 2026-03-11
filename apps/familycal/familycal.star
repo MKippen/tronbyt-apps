@@ -88,7 +88,7 @@ def format_event_date(event, now, timezone):
     if diff_days == 0:
         date_str = "TODAY"
     elif diff_days == 1:
-        date_str = "TOM"
+        date_str = "TOMORROW"
     else:
         # Show day of week + month/day
         dow = event_time.format("Mon")
