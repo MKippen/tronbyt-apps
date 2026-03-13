@@ -1,0 +1,7 @@
+id: nwsalert
+name: NWS Alert
+summary: Weather alerts from NWS
+desc: Shows active NWS weather alerts from Home Assistant with severity color coding. Only appears when alerts are active.
+author: tronbyt
+fileName: nwsalert.star
+packageName: nwsalert
