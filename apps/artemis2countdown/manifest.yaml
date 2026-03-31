@@ -1,0 +1,7 @@
+---
+id: artemis2countdown
+name: Artemis II Countdown
+summary: Countdown to the Artemis II Moon mission
+desc: Displays a countdown to the Artemis II crewed lunar flyby launch on April 1, 2026 at 6:24 PM EDT from Kennedy Space Center.
+author: SoNu (for Molly)
+fileName: artemis2countdown.star
